@@ -32,22 +32,30 @@ void accumulate(SumAccumulator* accumulator, int value) {
 	accumulator -> accu += value;
 }
 
+#define __T_CURRENT_VISITOR__ visitCurrentValueWithForget
 #define __T_NEXT_VISITOR__ visitTailWithForget
 #define __T_DISPOSE_VISITOR__ free
 #include "chunkmonad.h"
 void* visitTailWithForget(void* provenList) {
 	return (void*) visitTail((IntList*) provenList);
 }
+void* visitCurrentValueWithForget(void* provenList) {
+	return (void*) &(((IntList*) provenList) -> head);
+}
 
 int heavyComputation() {
 	SumAccumulator acc = {.accu = 0};
 	RUN_WORKFLOW(
 		rangeClose(7), //Starting declaration (IntList)
-		int value = ((IntList*) getvalue($$)) -> head, //how to consume value from IntList = (getvalue($$): void*)
+		WORKFLOW_STORAGE(
+			int value;
+		),
 		WORKFLOW( //monad workflow
+			value = *((int*)__VAL__);
 			LMAP(value, value * 2 + value)
 			LFILTER(value % 2 == 0)
 			FLATMAP(value, rangeClose, 4) //4 flag here is mandatory
+			value = *((int*)__VAL__);
 			LMAP(value, value + 1)
 			LCOLLECT(acc.accu += value)
 		)
@@ -55,6 +63,7 @@ int heavyComputation() {
 	return acc.accu;
 }
 
+#undef __T_CURRENT_VISITOR__
 #undef __T_NEXT_VISITOR__
 #undef __T_DISPOSE_VISITOR__
 
