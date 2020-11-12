@@ -71,44 +71,103 @@ sum(x)
 ```
 
 #### Chunkmonad, explicit content
-```c
-void workflow(ChunkZip* myCommand, SumAcc* myAccumulator) {
-	int value = ((IntList*) getvalue(myCommand)) -> head;
-	RESTORE
+The assumption of *chunkmonad* is that, all Object Oriented Programming concept
+asides, the monad really stands for a description of a computation flow.
 
-	LMAP(value, 2*value + value)
-	LFILTER(value % 2 == 0)
-	FLATMAP(value, rangeClose, FLATMAP_FLAG(lbl_accu))
-	LMPAT(value, value + 1)
-	COLLECT(accumulate, value)
-}
-#define __T_NEXT_VISITOR__ visitTailWithForget
-#define __T_DISPOSE_VISITOR__ free
-#include "chunkmonad.h"
+In C, there is no generic typing nor objects, so all what's known about monads
+are usually unappliable. However, their benefit and the problem they solve can
+inspire some code.
+
+The following code is a fully expressive description of what *chunkmonad*
+offers, in plain C:
+```c
 void* visitTailWithForget(void* provenList) {
 	return (void*) visitTail((IntList*) provenList);
 }
-int computeSum(IntList* list) {
-	SumAcc accumulator = {.accu = 0};
-	RUN_WORKFLOW(workflow, list, &accumulator);
-	int result = accumulator -> accu;
-	return result;
+void* visitCurrentValueWithForget(void* provenList) {
+	return (void*) &(((IntList*) provenList) -> head);
 }
-#undef __T_NEXT_VISITOR__
-#undef __T_DISPOSE_VISITOR__
 
-computeSum(rangeClose(7));
+int heavyComputation() {
+	SumAccumulator acc = {.acc = 0};
+	ChunkZip* $$ = unit(rangeClose(7)); // starting point here
+	do {
+		// Visit current list value and pass it to extract the wrapped value
+		void* $wrappedvalue = visitCurrentValueWithForget(getvalue($$));
+		// Working section, as in Cobol, for convenience
+		int value;
+		// Depending on the restore point of the current chunk, we branch
+		switch(restorepoint($$)) {
+			case 0: // default case
+				value = *((int*) $wrappedvalue);
+				value = value * 2 + value;
+				if(! (value % 2 == 0) )break;
+				/* Flat map trick: emit event to current chunk,
+					so that the result of flat map is chained
+					after the current processing chunks.
+
+				The newly added chunked will be restored with restore
+				state 4.
+				*/
+				emitevent($$, rangeClose(value), 4);break;
+			case 4:
+				value = *((int*) $wrappedvalue);
+				value = value + 1;
+				// Switch fallthrough
+			default:
+				acc.accu += value;
+		}
+		/* Move current chunk state:
+			we first get rid of the current iteration state with
+				a dispose method (free here)
+			then we move the head of the chunk: if something remains
+				to visit, we visit (using visitTailWithForget)
+			otherwise we move chunk itself to next chunk, if any has been
+				registered (using flatmap)
+		*/
+		$$ = moveforward($$, visitTailWithForget, free);
+	} while($$);
+	return acc.accu;
+}
 ```
-As you see, all the monadic flow is enclosed in a method `workflow`.
-The monad operations will be discussed later on, and we'll explain why
-FLATMAP requires an extra flag.
+In the code above, the `ChunkZip` is a struct that follows a linked list design.
+The reader should be able to guess the "tail recursive like" nature of the code.
 
-The remaining part of the job is to define visitors for easier access.
-In comparison to Java, C does not have generic typing; hence the most reusable way of
-moving is by typing most of the stuffs to `void*`.
+Simply put, a first chunk is created and refers to the starting list.
+Elements of this list are traversed using `visitTailWithForget`, and values are
+extracted using `visitCurrentValueWithForget`. Those methods are forced to be typed
+to `void*` to satisfy the C type system.
 
-In comparison to Python, variables are typed in C. Therefore, the `void*` typing from
-above forces us to define forget-functors like operations.
+MAP and FILTER operations are really straightforward and can be translated in plain C.
+FLATMAP is a bit more subtle. Simply put, each FLATMAP is going to
+create a new chunk, marked with a restoration point. Details of this procedure
+are explicit by following the implementation `chunkmonad.c`.
+
+#### Chunkmonad, with sugar
+Once you got the basic idea, you can benefit from the macros we have developed, to
+make the experience a bit more user friendly. Below is an example of exactly the
+same procedure, with macros:
+```c
+int heavyComputation() {
+	SumAccumulator acc = {.accu = 0};
+	RUN_WORKFLOW(
+		rangeClose(7),
+		WORFLOW_STORAGE(
+			int value;
+		),
+		WORKFLOW(
+			value = *((int*)__VAL__);
+			LMAP(value, value * 2 + value);
+			LFILTER(value % 2 == 0)
+			FLATMAP(value, rangeClose, 4)
+			value = *((int*)__VAL__);
+			LMAP(value, value + 1)
+			LCOLLECT(acc.accu += value)
+		)
+	)
+	return acc.accu;
+}
+```
 
 ## Header file explained
 This section explains the header file `chunkmonad.h`. It is the only file that requires

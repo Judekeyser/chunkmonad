@@ -47,7 +47,7 @@ int heavyComputation() {
 	SumAccumulator acc = {.accu = 0};
 	RUN_WORKFLOW(
 		rangeClose(7), //Starting declaration (IntList)
-		WORKFLOW_STORAGE(
+		WORKFLOW_STORAGE( //Working storage, as in Cobol
 			int value;
 		),
 		WORKFLOW( //monad workflow
