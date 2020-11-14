@@ -51,11 +51,11 @@ int heavyComputation() {
 			int value;
 		),
 		WORKFLOW( //monad workflow
-			value = *((int*)__VAL__);
+			DEFER_PULL_AS(int,value)
 			LMAP(value, value * 2 + value)
 			LFILTER(value % 2 == 0)
 			FLATMAP(value, rangeClose, 4) //4 flag here is mandatory
-			value = *((int*)__VAL__);
+			DEFER_PULL_AS(int,value)
 			LMAP(value, value + 1)
 			LCOLLECT(acc.accu += value)
 		)

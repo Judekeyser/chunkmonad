@@ -56,6 +56,7 @@ void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 #define WORKFLOW(...) switch(chunkmonad_restorepoint($$)) { case 0: __VA_ARGS__ }
 #define LMAP(value,...) value = __VA_ARGS__;
 #define LFILTER(...) if(!(__VA_ARGS__)) break;
-
+#define PULL_AS(type,symbol) symbol = (type*)__VAL__;
+#define DEFER_PULL_AS(type,symbol) symbol = *((type*)__VAL__);
 #endif
 
