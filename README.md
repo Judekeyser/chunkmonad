@@ -234,19 +234,6 @@ The operations to perform should be C instructions or macro calls. See the `main
 If possible, get rid of FLATMAP flag. That's not really blocking as the ordering does not matter, but it is
 quite ugly.
 
-### Make `MAP` accept many method in function ordering
-Currently, the `MAP` macro can receive only one method. We would like to allow it to accept
-many methods, in such a way that
-```c
-MAP(value, f, g)
-```
-will be translated by
-```c
-value = g(f(value));
-```
-This would mitigate the usage of the `WORKFLOW_STORAGE` section. The technical part is that the ordering should
-be reversed.
-
 ### Review syntax for MAP and FLATMAP
 Currently, the syntax for MAP and FLATMAP are quite asymmetric and there is a need to call again a
 variable initializer after FLATMAP, although it is not clearly shown in the syntax.
