@@ -228,15 +228,44 @@ WORKFLOW(
 ```
 The operations to perform should be C instructions or macro calls. See the `main.c` for a full example.
 
-## Further developments
+## Workflow operators
 
-### Get rid of FLATMAP flag
-If possible, get rid of FLATMAP flag. That's not really blocking as the ordering does not matter, but it is
-quite ugly.
+### `MAP`
+Mapping is done using the `MAP` macro, whose syntax is
+```c
+MAP(source,target,...)
+```
+The `source` is the variable to use, the `target` is the variable that is going to be filled with
+the result of the map. The variadic part is a list of up to 7 method names, that will be chained.
+For example:
+```c
+MAP(x,y,f,g,h)
+```
+is translated to
+```c
+y = h(g(f(x)));
+```
 
-### Review syntax for MAP and FLATMAP
-Currently, the syntax for MAP and FLATMAP are quite asymmetric and there is a need to call again a
-variable initializer after FLATMAP, although it is not clearly shown in the syntax.
+### `FILTER_OR`
+Filter follows the same kind of pattern as map, but it only takes one parameter: the source variable.
+The first seven variadic parameters will be chained using logical `||` operator: if not provided, they will be
+translated to `!!0`. For example:
+```c
+FILTER_OR(x, f,g,h)
+```
+is translated to
+```c
+if(! (f(x) || g(x) || h(x) || !!0 || !!0 || !!0 || !!0)) break;
+```
+We hope the C compiler itself will get rid of those ugly parts. (It's a current improvement feature to get rid of
+them directly.)
 
-We would like to homogeneized this and rely on a syntax.
+### `FLATMAP`
+This is certainly the most disapointing operation. The current implementation of flatmap is of the form
+```c
+FLATMAP(value,f, 4)
+```
+This will compute `f(value)` and create a restore point of id 4. Each flatmap operation should have a unique
+idea, but the list need not be ordered or nor continuous. A flatmap operation should be followed by a pull,
+as the current established state will be erased.
 
