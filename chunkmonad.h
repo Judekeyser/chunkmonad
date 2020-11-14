@@ -16,6 +16,13 @@ ChunkMonad* chunkmonad_moveforward(ChunkMonad* chunk, NextVisitor nextVisitor, D
 
 void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 
+#define CAT(a,b) a ## b
+#define __IDENTITY__TO_NOTHING__
+#define __IDENTITY__(a) a
+#define REVERSE_FUNC_CALL(symb,...) __REVERSE_FUNC_CALL__(symb,__VA_ARGS__,\
+		__IDENTITY__, __IDENTITY__, __IDENTITY__, __IDENTITY__, __IDENTITY__,__IDENTITY__, __IDENTITY__)
+#define __REVERSE_FUNC_CALL__(symb,a,b,c,d,e,f,g,END,...) CAT(END, TO_NOTHING__)g(f(e(d(c(b(a(symb)))))))
+
 #define __VAL__ $wrappedValue
 #define RUN_WORKFLOW(_START_SYMB,_STORAGE,...) do {\
 	ChunkMonad* $$ = chunkmonad_unit(_START_SYMB); do {\
@@ -27,7 +34,7 @@ void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 	} while(0);
 
 #define WORKFLOW_STORAGE(...) __VA_ARGS__
-#define MAP(value,method) value = method(value);
+#define MAP(value,target,...) target = REVERSE_FUNC_CALL(value,__VA_ARGS__);
 #define FILTER(value,method) if(!method(value)) break;
 #define FLATMAP(value,method,flag) chunkmonad_emitevent($$,method(value),flag);break;case flag:
 #define LCOLLECT(...) default: __VA_ARGS__;
@@ -36,3 +43,4 @@ void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 #define LFILTER(...) if(!(__VA_ARGS__)) break;
 
 #endif
+
