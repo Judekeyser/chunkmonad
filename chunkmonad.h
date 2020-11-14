@@ -50,6 +50,7 @@ void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 #define WORKFLOW_STORAGE(...) __VA_ARGS__
 #define MAP(value,target,...) target = REVERSE_FUNC_CALL(value,__VA_ARGS__);
 #define FILTER_OR(value,...) if(!(CHAIN_WITH_OR(value,__VA_ARGS__))) break;
+#define NOT(method) !method
 #define FLATMAP(value,method,flag) chunkmonad_emitevent($$,method(value),flag);break;case flag:
 #define LCOLLECT(...) default: __VA_ARGS__;
 #define WORKFLOW(...) switch(chunkmonad_restorepoint($$)) { case 0: __VA_ARGS__ }
