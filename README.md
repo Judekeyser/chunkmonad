@@ -246,3 +246,10 @@ value = g(f(value));
 ```
 This would mitigate the usage of the `WORKFLOW_STORAGE` section. The technical part is that the ordering should
 be reversed.
+
+### Review syntax for MAP and FLATMAP
+Currently, the syntax for MAP and FLATMAP are quite asymmetric and there is a need to call again a
+variable initializer after FLATMAP, although it is not clearly shown in the syntax.
+
+We would like to homogeneized this and rely on a syntax.
+
