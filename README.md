@@ -9,15 +9,6 @@ with the most fundamental C features in mind.
 The header file defines both macros and methods. The methods maybe of interest for the
 user, although the use of macros make stuffs easier to approach.
 
-### What you're expected to write, as a client
-As a client of the library, you are expected to define a method of the form
-```c
-void workflow(ChunkZip* myCommand, T* myAccumulator)
-```
-In this expression, the `ChunkZip` type is a type of ours. Think of it as a wrapper around
-your monad. The `T` type is a type of your choice: it's the accumulator. This is the
-collect/reduce operation performed at the very end of your monad flow.
-
 ### Examples
 Below are described examples. We do not have much materials in pure C, so we have
 redefined a very basic monad called `IntList`, together with a very basic accumulator
@@ -25,10 +16,10 @@ redefined a very basic monad called `IntList`, together with a very basic accumu
 
 The implementations are straightforward:
 ```c
-typedef struct SumAcc {
+typedef struct SumAccumulator {
 	int accu;
 };
-void accumulate(SumAcc* self, int value) {
+void accumulate(SumAccumulator* self, int value) {
 	self -> accu += value;
 }
 ```
@@ -44,7 +35,7 @@ IntList* visitTail(IntList* list) {
 	return list;
 }
 ```
-You should directly see the kind of code we have in mind. Before exposing the C-monadic
+Before exposing the C-monadic
 styled code, we give examples of the example algorithm in Java (using Stream API),
 in Python (using for comprehension) and in chunkmonad style.
 
@@ -169,8 +160,71 @@ int heavyComputation() {
 }
 ```
 
-## Header file explained
-This section explains the header file `chunkmonad.h`. It is the only file that requires
-to be included in your project.
+## Getting started
 
+### `RUN_WORKFLOW`
+All the concern of the chunkmonad library is to run a workflow, that consists of maps, filters
+and flatmaps.
+
+Running a workflow is all about invoking the macro `RUN_WORKFLOW`, whose syntax is
+```c
+RUN_WORFLOW(
+	element_on_which_computation_applies,
+	workflow_storage_section,
+	workflowd_definition
+)
+```
+The below sections explain how to configure the workflow and how to define it.
+
+### Workflow configuration
+Before runnin the workflow, you'll need to include the header file `chunkmonad.h`. This file
+exposes both methods and macros. If you go in plain macro style, you'll never need to use the methods.
+Still, you may find them useful, maybe one day.
+
+To make the macros run, you'll need to configure your environment with three macros you have to define
+yourself:
+```c
+#define __T_CURRENT_VISITOR__ visit_current_value_with_type_forget_method
+#define __T_NEXT_VISITOR__ visit_next_monadic_element_with_type_forget
+#define __T_DISPOSE_VISITOR__ dispose_current_monadic_element_with_type_forget
+```
+Those macros need to refer to methods in your program, satisfying the following contracts:
+1. `__T_CURRENT_VISITOR__` is of type `void* -> void*` and returns, given a monadic element, the wrapped value the element represents.
+2. `__T_NEXT_VISITOR__` is of type `void* -> void*` and returns, given a monadic element, the next element to visit.
+3. `__T_DISPOSE_VISITOR__` if of type `void* -> void` and performs, given a monadic element, a kill of it.
+
+The workflow will run with the following specification:
+1. Given the first element to visit (the `element_on_which_computation_applies` argument of the workflow), a *chunk* is formed containing this element. The chunk will be dropped only when no other elements can be reached from the current enclosed one; iteration is done using the `next_visitor`.
+2. For each iterated element, the wrapped value is extracted (using the `current_visitor`) and stored in a macro `__VAL__`. The type will be `void*`, so it is your responsibility to defer the pointer correctly.
+3. One an element in a chunk is visited, the chunk will call the `dispose_visitor` to dispose it, before getting the next element to visit.
+
+As such, there will be only *one chunk*, and this situation will not change *unless* you're using FLATMAP.
+Each FLATMAP operation will append a new chunk afte the list of chunks to visit, with a given restore point.
+
+Restore points (the flag in the FLATMAP, see below) should thus be unique inside a workflow definition;
+but the ordering does not matter.
+
+### `WORKFLOW_STORAGE`
+Once the workflow configured and the first element written down, the second parameter is the workflow storage
+section, which should be of the form
+```c
+WORKFLOW_STORAGE(
+	/* variable declarations, each ended by a semi-column */
+)
+```
+The variables enclosed in the workflow storage section will be available inside the workflow definition
+and can be used as temporary variables. This is important because, as a reminder, the `__VAL__` macro
+refers to a `void*` variable, and it can become quickly annoying to perform multiple casts. 
+
+Because C is strongly typed but has no generics, the workflow storage section can be seen as a wild card to
+maintain a pool of variables (the shortest the pool, the better, off course).
+
+### `WORKFLOW` definition
+The definition of the workflow goes in the third parameter, of the form
+```c
+WORKFLOW(
+	/* operations to perform, each as valid C instructions */
+)
+```
+The operations to perform should be C instructions or macro calls. See the `main.c` for a full example.
 
