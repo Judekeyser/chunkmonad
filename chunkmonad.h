@@ -23,7 +23,21 @@ void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 		__IDENTITY__, __IDENTITY__, __IDENTITY__, __IDENTITY__, __IDENTITY__,__IDENTITY__, __IDENTITY__)
 #define __REVERSE_FUNC_CALL__(symb,a,b,c,d,e,f,g,END,...) CAT(END, TO_NOTHING__)g(f(e(d(c(b(a(symb)))))))
 
+#define __FALSE__TO_NOTHING__
+#define __FALSE__(a) !!0
+#define CHAIN_WITH_OR(symb,...) __CHAIN_WITH_OR__(symb,__VA_ARGS__,\
+		__FALSE__,__FALSE__,__FALSE__,__FALSE__,__FALSE__,__FALSE__,__FALSE__)
+#define __CHAIN_WITH_OR__(symb,a,b,c,d,e,f,g,END,...) \
+	a(symb) || b(symb) || c(symb) || d(symb) || e(symb) || f(symb) || g(symb)
+
+/**
+ * User can use their own __VAL__ private symbol
+ * if ever the one of this library does not fit their needs
+ */
+#ifndef __VAL__
 #define __VAL__ $wrappedValue
+#endif
+
 #define RUN_WORKFLOW(_START_SYMB,_STORAGE,...) do {\
 	ChunkMonad* $$ = chunkmonad_unit(_START_SYMB); do {\
 		void* __VAL__ = __T_CURRENT_VISITOR__(chunkmonad_getvalue($$));\
@@ -35,7 +49,7 @@ void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore);
 
 #define WORKFLOW_STORAGE(...) __VA_ARGS__
 #define MAP(value,target,...) target = REVERSE_FUNC_CALL(value,__VA_ARGS__);
-#define FILTER(value,method) if(!method(value)) break;
+#define FILTER_OR(value,...) if(!(CHAIN_WITH_OR(value,__VA_ARGS__))) break;
 #define FLATMAP(value,method,flag) chunkmonad_emitevent($$,method(value),flag);break;case flag:
 #define LCOLLECT(...) default: __VA_ARGS__;
 #define WORKFLOW(...) switch(chunkmonad_restorepoint($$)) { case 0: __VA_ARGS__ }
