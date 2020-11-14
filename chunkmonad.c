@@ -3,27 +3,27 @@
 
 typedef struct ChunkLastMnemoized ChunkLastMnemoized;
 
-struct ChunkZip {
+struct ChunkMonad {
 	int restore;
 	void* ref;
-	ChunkZip* next;
+	ChunkMonad* next;
 	ChunkLastMnemoized* lastIndirRef;
 };
 
 struct ChunkLastMnemoized {
-	ChunkZip* ref;
+	ChunkMonad* ref;
 };
 
-void* getvalue(ChunkZip* chunk) {
+void* chunkmonad_getvalue(ChunkMonad* chunk) {
 	return chunk -> ref;
 }
 
-int restorepoint(ChunkZip* chunk) {
+int chunkmonad_restorepoint(ChunkMonad* chunk) {
 	return chunk -> restore;
 }
 
-ChunkZip* unit(void* ref) {
-	ChunkZip* chunk = malloc(sizeof(ChunkZip));
+ChunkMonad* chunkmonad_unit(void* ref) {
+	ChunkMonad* chunk = malloc(sizeof(ChunkMonad));
 	ChunkLastMnemoized* lastIndirRef = malloc(sizeof(ChunkLastMnemoized));
 	chunk -> restore = 0;
 	chunk -> ref = ref;
@@ -33,8 +33,8 @@ ChunkZip* unit(void* ref) {
 	return chunk;
 }
 
-static ChunkZip* dispose_and_returnnext(ChunkZip* chunk) {
-	ChunkZip* next = chunk -> next;
+static ChunkMonad* dispose_and_returnnext(ChunkMonad* chunk) {
+	ChunkMonad* next = chunk -> next;
 	if (!next) {
 		free(chunk -> lastIndirRef);
 	}
@@ -42,24 +42,24 @@ static ChunkZip* dispose_and_returnnext(ChunkZip* chunk) {
 	return next;
 }
 
-ChunkZip* moveforward(ChunkZip* chunk, NextVisitor nextVisitor, DisposeVisitor disposeVisitor) { 
+ChunkMonad* chunkmonad_moveforward(ChunkMonad* chunk, NextVisitor nextVisitor, DisposeVisitor disposeVisitor) { 
 	if (chunk -> ref) {
 		void* ref = chunk -> ref;
 		chunk -> ref = nextVisitor(chunk -> ref);
 		disposeVisitor(ref);
 		if (!(chunk -> ref)) {
-			return moveforward(chunk,nextVisitor,disposeVisitor);
+			return chunkmonad_moveforward(chunk,nextVisitor,disposeVisitor);
 		}
 		return chunk;
 	} else return dispose_and_returnnext(chunk);
 }
 
-void emitevent(ChunkZip* lastNonNull, void* event, int restore) {
+void chunkmonad_emitevent(ChunkMonad* lastNonNull, void* event, int restore) {
 	/*while(lastNonNull -> next) {
 		lastNonNull = lastNonNull -> next;
 	}*/
 
-	ChunkZip* newChunk = malloc(sizeof(ChunkZip));
+	ChunkMonad* newChunk = malloc(sizeof(ChunkMonad));
 	newChunk -> restore = restore;
 	newChunk -> ref = event;
 	newChunk -> lastIndirRef = lastNonNull -> lastIndirRef;
