@@ -129,8 +129,8 @@ Elements of this list are traversed using `visitTailWithForget`, and values are
 extracted using `visitCurrentValueWithForget`. Those methods are forced to be typed
 to `void*` to satisfy the C type system.
 
-MAP and FILTER operations are really straightforward and can be translated in plain C.
-FLATMAP is a bit more subtle. Simply put, each FLATMAP is going to
+APPLY and FILTER operations are really straightforward and can be translated in plain C.
+FLATAPPLY is a bit more subtle. Simply put, each FLATAPPLY is going to
 create a new chunk, marked with a restoration point. Details of this procedure
 are explicit by following the implementation `chunkmonad.c`.
 
@@ -148,11 +148,11 @@ int heavyComputation() {
 		),
 		WORKFLOW(
 			value = *((int*)__VAL__);
-			LMAP(value, value * 2 + value);
+			LAPPLY(value, value * 2 + value);
 			LFILTER(value % 2 == 0)
-			FLATMAP(value, rangeClose, 4)
+			FLATAPPLY(value, rangeClose, 4)
 			value = *((int*)__VAL__);
-			LMAP(value, value + 1)
+			LAPPLY(value, value + 1)
 			LCOLLECT(acc.accu += value)
 		)
 	)
@@ -198,10 +198,10 @@ The workflow will run with the following specification:
 2. For each iterated element, the wrapped value is extracted (using the `current_visitor`) and stored in a macro `__VAL__`. The type will be `void*`, so it is your responsibility to defer the pointer correctly.
 3. One an element in a chunk is visited, the chunk will call the `dispose_visitor` to dispose it, before getting the next element to visit.
 
-As such, there will be only *one chunk*, and this situation will not change *unless* you're using FLATMAP.
-Each FLATMAP operation will append a new chunk afte the list of chunks to visit, with a given restore point.
+As such, there will be only *one chunk*, and this situation will not change *unless* you're using FLATAPPLY.
+Each FLATAPPLY operation will append a new chunk afte the list of chunks to visit, with a given restore point.
 
-Restore points (the flag in the FLATMAP, see below) should thus be unique inside a workflow definition;
+Restore points (the flag in the FLATAPPLY, see below) should thus be unique inside a workflow definition;
 but the ordering does not matter.
 
 ### `WORKFLOW_STORAGE`
@@ -230,16 +230,16 @@ The operations to perform should be C instructions or macro calls. See the `main
 
 ## Workflow operators
 
-### `MAP`
-Mapping is done using the `MAP` macro, whose syntax is
+### `APPLY`
+The easiest operation is `APPLY`, whse syntax goes as
 ```c
-MAP(source,target,...)
+APPLY(source,target,...)
 ```
 The `source` is the variable to use, the `target` is the variable that is going to be filled with
 the result of the map. The variadic part is a list of up to 7 method names, that will be chained.
 For example:
 ```c
-MAP(x,y,f,g,h)
+APPLY(x,y,f,g,h)
 ```
 is translated to
 ```c
@@ -260,10 +260,10 @@ if(! (f(x) || g(x) || h(x) || !!0 || !!0 || !!0 || !!0)) break;
 We hope the C compiler itself will get rid of those ugly parts. (It's a current improvement feature to get rid of
 them directly.)
 
-### `FLATMAP`
+### `FLATAPPLY`
 This is certainly the most disapointing operation. The current implementation of flatmap is of the form
 ```c
-FLATMAP(value,f, 4)
+FLATAPPLY(value,f, 4)
 ```
 This will compute `f(value)` and create a restore point of id 4. Each flatmap operation should have a unique
 idea, but the list need not be ordered or nor continuous. A flatmap operation should be followed by a pull,
