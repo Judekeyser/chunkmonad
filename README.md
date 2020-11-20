@@ -150,7 +150,7 @@ int heavyComputation() {
 			value = *((int*)__VAL__);
 			LAPPLY(value, value * 2 + value);
 			LFILTER(value % 2 == 0)
-			FLATAPPLY(value, rangeClose, 4)
+			FLATMAP(value, rangeClose, 4)
 			value = *((int*)__VAL__);
 			LAPPLY(value, value + 1)
 			LCOLLECT(acc.accu += value)
@@ -260,10 +260,10 @@ if(! (f(x) || g(x) || h(x) || !!0 || !!0 || !!0 || !!0)) break;
 We hope the C compiler itself will get rid of those ugly parts. (It's a current improvement feature to get rid of
 them directly.)
 
-### `FLATAPPLY`
+### `FLATMAP`
 This is certainly the most disapointing operation. The current implementation of flatmap is of the form
 ```c
-FLATAPPLY(value,f, 4)
+FLATMAP(value,f, 4)
 ```
 This will compute `f(value)` and create a restore point of id 4. Each flatmap operation should have a unique
 idea, but the list need not be ordered or nor continuous. A flatmap operation should be followed by a pull,
